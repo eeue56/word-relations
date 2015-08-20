@@ -1,0 +1,100 @@
+module ThreeWordPlacement
+
+where
+
+    import Data.List (sort)
+    import Data.Set (fromList, toList, difference)
+
+    data FeelingWord = FeelingWord String 
+        deriving (Show, Eq, Ord)
+
+    data FeelingWordConnection = FeelingWordConnection [FeelingWord] 
+        deriving (Show, Eq)
+
+    data Feeling = Feeling {
+         firstWord :: FeelingWord,
+         secondWord :: FeelingWord,
+         thirdWord :: FeelingWord 
+    } deriving (Show, Eq)
+
+    data TriadFace = Triadface [FeelingWordConnection]
+        deriving (Show, Eq, Ord)
+
+
+    allFeelings :: [Feeling] -> [FeelingWord]
+    allFeelings [] = []
+    allFeelings ((Feeling x y z):xs) = x : y : z : allFeelings xs 
+
+    uniqueFeelings :: [FeelingWord] -> [FeelingWord]
+    uniqueFeelings = toList . fromList
+
+    feelingConnections :: [Feeling] -> [FeelingWordConnection]
+    feelingConnections [] = []
+    feelingConnections ((Feeling x y z):xs) = xToY : yToZ : xToZ : feelingConnections xs
+        where
+            xToY = FeelingWordConnection [x, y]
+            yToZ = FeelingWordConnection [y, z]
+            xToZ = FeelingWordConnection [x, z]
+
+    appears :: FeelingWord -> FeelingWordConnection -> Bool
+    appears word (FeelingWordConnection xs) = word `elem` xs
+
+    connectionCount :: FeelingWord -> [FeelingWordConnection] -> Int
+    connectionCount _ [] = 0
+    connectionCount word (x:xs) = let nextNumber = connectionCount word xs in
+        if appears word x then 1 + nextNumber else 0 + nextNumber 
+
+    wordsWithConnectionCount :: [Feeling] -> [(Int, FeelingWord)]
+    wordsWithConnectionCount [] = []
+    wordsWithConnectionCount xs = sort [(connectionCount y connections, y) | y <- words]
+        where
+            connections = feelingConnections xs
+            words = uniqueFeelings $ allFeelings xs
+
+    replaceFeelingWord :: (FeelingWord, FeelingWord) -> Feeling -> Feeling
+    replaceFeelingWord (original, replacement) (Feeling a b c) = 
+            Feeling (helper a) (helper b) (helper c)
+        where
+            helper x = if x == original then replacement else x
+
+    replaceFeelingWords :: [(FeelingWord, FeelingWord)] -> Feeling -> Feeling
+    replaceFeelingWords [] f = f 
+    replaceFeelingWords (x:xs) f = replaceFeelingWords xs $ replaceFeelingWord x f
+
+    createCycle :: [FeelingWordConnection] -> Maybe [FeelingWordConnection]
+    createCycle [] = Just []
+    createCycle [x] = Just [x]
+    createCycle xs = Nothing
+        where
+            seperate xs ys = toList $ difference (fromList xs) (fromList ys) 
+
+    flattenFeelings :: [FeelingWord] -> [FeelingWordConnection]
+    flattenFeelings [] = []
+    flattenFeelings (x:y:xs) = FeelingWordConnection x y : flattenFeelings xs
+
+
+
+    main = do 
+        let feelingWords = [FeelingWord x | 
+                x <- ["Dog", "Robot", "Cat", "Fish", "Space"]]
+        let testBed = [ Feeling (FeelingWord "Robot") (FeelingWord "Dog") (FeelingWord "Cat"),
+                Feeling (FeelingWord "Space") (FeelingWord "Fish") (FeelingWord "Banana"),
+                Feeling (FeelingWord "Goat") (FeelingWord "Robot") (FeelingWord "Dino"),
+                Feeling (FeelingWord "Robot") (FeelingWord "Nerd") (FeelingWord "Dino")]
+        putStrLn $ show $ wordsWithConnectionCount testBed
+
+        let match = (FeelingWord "Space", FeelingWord "Dino")
+        let matches = [(FeelingWord "Space", FeelingWord "Dino"),
+                (FeelingWord "Goat", FeelingWord "Carpet")]
+        let fx = replaceFeelingWord match
+
+
+        let testBed' = map fx testBed
+        let testBed'' = map (replaceFeelingWords matches) testBed
+
+        putStrLn $ show $ testBed'
+
+        putStrLn $ show $ wordsWithConnectionCount testBed'
+
+        putStrLn $ show $ wordsWithConnectionCount testBed''
+
